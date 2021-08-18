@@ -200,6 +200,29 @@ impl<T: Send + 'static> LocalStorage<T> {
     pub fn get(&self) -> &T {
         self.try_get().expect("localstorage::get(): called get() before set()")
     }
+
+    /// Attempts to borrow the value in this storage location. If the
+    /// initialization function has not previously been [`set`](#method.set),
+    /// the given initialization function will be used to initialize the value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use state::LocalStorage;
+    /// static MY_GLOBAL: LocalStorage<&'static str> = LocalStorage::new();
+    ///
+    /// assert_eq!(*MY_GLOBAL.get_or_set(|| "Hello, world!"), "Hello, world!");
+    /// ```
+    #[inline]
+    pub fn get_or_set<F: Fn() -> T>(&self, state_init: F) -> &T
+    where F: Send + Sync + 'static {
+        if let Some(value) = self.try_get() {
+            value
+        } else {
+            self.set(state_init);
+            self.get()
+        }
+    }
 }
 
 #[cfg(test)] static_assertions::assert_impl_all!(LocalValue<u8>: Send, Sync);
